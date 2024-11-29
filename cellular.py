@@ -7,7 +7,7 @@ ti.init(arch=ti.vulkan)
 
 # Parameters
 M = 100  # Grid size
-N = 5    # Neighborhood size (NxN)
+N = 7    # Neighborhood size (NxN)
 canvas_size = 800  # Canvas size for rendering
 
 # Fields for hyperparameters
@@ -44,7 +44,7 @@ def initialize_weights():
 @ti.kernel
 def initialize_thresholds():
     for i, j in ti.ndrange(M, M):
-        threshold[i, j] = 0.3 + (2.0*ti.random(ti.f32) - 1.0) * 0.1  # Deviation between -0.1 and +0.1
+        threshold[i, j] = 0.4 + (2.0*ti.random(ti.f32) - 1.0) * 0.1  # Deviation between -0.1 and +0.1
 
 # Update function
 @ti.kernel
@@ -123,13 +123,13 @@ initialize_weights()
 initialize_thresholds()
 
 # Hyperparameters
-alpha[None] = 0.040
+alpha[None] = 0.080
 speed[None] = 0.010
 learning_rate[None] = 0.01
 
 # Homeostatic Plasticity Parameters
 target_activity[None] = 0.1  # Target activity level (between 0 and 1)
-threshold_learning_rate[None] = 0.008  # Learning rate for threshold adjustment
+threshold_learning_rate[None] = 0.005  # Learning rate for threshold adjustment
 
 # Stimulation parameters
 stim_interval = 5
@@ -138,7 +138,7 @@ stim_timer[None] = stim_interval  # Initialize stim_timer
 random_stimulation = ti.field(dtype=ti.i32, shape=())  # Toggle for random stimulation
 random_stimulation[None] = 0  # Default to off
 
-fps = 30
+fps = 60
 frame_duration = 1.0 / fps  # Time per frame
 
 # Create Taichi window and canvas
