@@ -1,6 +1,5 @@
 import taichi as ti
 import numpy as np
-
 import time
 
 # Initialize Taichi
@@ -8,7 +7,7 @@ ti.init(arch=ti.vulkan)
 
 # Parameters
 M = 100  # Grid size
-N = 3    # Neighborhood size (NxN)
+N = 5    # Neighborhood size (NxN)
 canvas_size = 800  # Canvas size for rendering
 alpha = ti.field(dtype=ti.f32, shape=())  # Recovery rate
 threshold = ti.field(dtype=ti.f32, shape=())  # Activation threshold
@@ -70,11 +69,13 @@ def update_img():
 # Initialize fields and GUI
 initialize_weights()
 alpha[None] = 0.080
-threshold[None] = 0.250
+threshold[None] = 0.200
 speed[None] = 0.010
 
-stim_interval = 16
-stim_timer = stim_interval
+stim_interval = 5
+stim_timer = ti.field(dtype=ti.i32, shape=())
+stim_timer[None] = stim_interval  # Initialize stim_timer
+
 fps = 30
 frame_duration = 1.0 / fps  # Time per frame
 
@@ -83,28 +84,34 @@ window = ti.ui.Window("Cellular Automaton", (canvas_size, canvas_size), vsync=Tr
 canvas = window.get_canvas()
 gui = window.get_gui()
 
+# Kernel to stimulate cells
+@ti.kernel
+def stimulate_cells(is_space_pressed: ti.i32):
+    if is_space_pressed == 1:
+        if stim_timer[None] < stim_interval:
+            stim_timer[None] += 1
+        elif stim_timer[None] == stim_interval:
+            for i, j in ti.ndrange(M, M):
+                if i % 10 == 0 and j % 10 == 0:
+                    sum_field[i, j] = threshold[None] + 1.0  # Fire cell
+            stim_timer[None] = 0
+
 # Main simulation loop
 while window.running:
     start_time = time.time()  # Record the start time of the frame
 
-    # Handle user interaction
+    # Handle user interaction for mouse clicks
     if window.get_event(ti.ui.PRESS):
         if window.event.key == ti.ui.LMB:
             mouse_pos = window.get_cursor_pos()
             x = int(mouse_pos[0] * M)
             y = int((1 - mouse_pos[1]) * M)  # Flip y-axis to match canvas
             if 0 <= x < M and 0 <= y < M:
-                sum_field[x, M-y] = threshold[None] + 1.0  # Activate cell
+                sum_field[x, M - y] = threshold[None] + 1.0  # Activate cell
 
-    # Handle user interaction
-    if window.is_pressed(ti.ui.SPACE):
-        if stim_timer < stim_interval:
-            stim_timer += 1
-        elif stim_timer == stim_interval:
-            for i, j in ti.ndrange(M, M):
-                if i % 25 == 0 and j % 25 == 0:
-                    sum_field[i, j] = threshold[None] + 1.0  # Fire cell
-            stim_timer = 0
+    # Stimulate cells if space bar is pressed
+    is_space_pressed = 1 if window.is_pressed(ti.ui.SPACE) else 0
+    stimulate_cells(is_space_pressed)
 
     # Update simulation
     update()
